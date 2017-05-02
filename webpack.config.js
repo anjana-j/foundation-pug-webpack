@@ -3,20 +3,19 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const BrowserSyncPlugin = require('browser-sync-webpack-plugin');
-const BitBarWebpackProgressPlugin = require('bitbar-webpack-progress-plugin'); //VSCode Only
 
 const PATHS = {
-    //react: path.join(__dirname, 'node_modules/react/dist/react.min.js'),
-    src: path.join(__dirname, 'src'),
-    dist: path.join(__dirname, 'dist')
+    src: path.resolve(__dirname, 'src'),
+    dist: path.resolve(__dirname, 'dist')
 };
-
 
 const config = {
 
+    devtool: "eval-source-map",
+    
     entry: {
-        app: './src/assets/js/app.js',
-        vendor: ['jquery','foundation-sites','./src/assets/js/vendor.js']
+        vendor      : ['jquery','foundation-sites','./src/assets/js/vendor.js'],
+        app         : './src/assets/js/app.js'
     },
 
     output: {
@@ -26,9 +25,13 @@ const config = {
 
     resolve: {
         modules: ['node_modules'],
+        extensions: [".js", ".json", ".jsx", ".css"],
         alias: {
+            'images' : path.resolve(__dirname, 'src/assets/images'),
+            'plugins': path.resolve(__dirname, 'src/plugins'),
             jquery: 'jquery/src/jquery',
-        }
+            
+        },
     },
 
     module: {
@@ -37,15 +40,7 @@ const config = {
             /* pug */
             {
                 test: /\.pug$/,
-                use: [
-                        {
-                            loader : 'html-loader', 
-                            options : {
-                                minimize: true
-                            }
-                        },
-                        'pug-html-loader'
-                    ]
+                use: ['html-loader','pug-html-loader?pretty']
             },
 
             /* styles loader */
@@ -53,7 +48,10 @@ const config = {
                 test: /\.(scss|css)$/,
                 use: ExtractTextPlugin.extract({
                     use: [{
-                            loader: "css-loader"
+                            loader: "css-loader",
+                            options : {
+                                sourceMap: true
+                            }
                         },
 
                         {
@@ -76,13 +74,15 @@ const config = {
                         {
                             loader: "sass-loader",
                             options : {
+                                sourceMap: true,
                                 includePaths : ["./node_modules/foundation-sites/scss"]
                             }
                         }
 
                         
                     ],
-                    fallback: "style-loader"
+                    fallback: "style-loader",
+                    publicPath: '../../'
                 })
             },
 
@@ -91,31 +91,31 @@ const config = {
             {
                 test: /\.svg$/,
                 exclude: [path.resolve(__dirname, "./src/assets/images")],
-                use: 'url-loader?limit=10000&mimetype=image/svg+xml&name=[name].[ext]&publicPath=../fonts/&outputPath=./assets/fonts/'
+                use: 'url-loader?limit=10000&mimetype=image/svg+xml&name=[name].[ext]&outputPath=./assets/fonts/&publicPath=../fonts/'
             },
             {
                 test: /\.ttf$/,
-                use: 'url-loader?limit=10000&mimetype=application/x-font-ttf&name=[name].[ext]&publicPath=../fonts/&outputPath=./assets/fonts/'
+                use: 'url-loader?limit=10000&mimetype=application/x-font-ttf&name=[name].[ext]&outputPath=./assets/fonts/&publicPath=../fonts/'
             }, 
             {
                 test: /\.otf$/,
-                use: 'url-loader?limit=10000&mimetype=application/x-font-opentype&name=[name].[ext]&publicPath=../fonts/&outputPath=./assets/fonts/'
+                use: 'url-loader?limit=10000&mimetype=application/x-font-opentype&name=[name].[ext]&outputPath=./assets/fonts/&publicPath=../fonts/'
             }, 
             {
                 test: /\.woff$/,
-                use: 'url-loader?limit=10000&mimetype=application/font-woff&name=[name].[ext]&publicPath=../fonts/&outputPath=./assets/fonts/'
+                use: 'url-loader?limit=10000&mimetype=application/font-woff&name=[name].[ext]&outputPath=./assets/fonts/&publicPath=../fonts/'
             }, 
             {
                 test: /\.woff2$/,
-                use: 'url-loader?limit=10000&mimetype=application/font-woff2&name=[name].[ext]&publicPath=../fonts/&outputPath=./assets/fonts/'
+                use: 'url-loader?limit=10000&mimetype=application/font-woff2&name=[name].[ext]&outputPath=./assets/fonts/&publicPath=../fonts/'
             }, 
             {
                 test: /\.eot$/,
-                use: 'url-loader?limit=10000&mimetype=application/vnd.ms-fontobject&name=[name].[ext]&publicPath=../fonts/&outputPath=./assets/fonts/'
+                use: 'url-loader?limit=10000&mimetype=application/vnd.ms-fontobject&name=[name].[ext]&outputPath=./assets/fonts/&publicPath=../fonts/'
             }, 
             {
                 test: /\.sfnt$/,
-                use: 'url-loader?limit=10000&mimetype=application/font-sfnt&name=[name].[ext]&publicPath=../fonts/&outputPath=./assets/fonts/'
+                use: 'url-loader?limit=10000&mimetype=application/font-sfnt&name=[name].[ext]&outputPath=./assets/fonts/&publicPath=../fonts/'
             },
 
             /* img loader */
@@ -124,15 +124,35 @@ const config = {
                 exclude: [
                     path.resolve(__dirname, "./src/assets/fonts")
                 ],
-                use: "file-loader?name=[name].[ext]&publicPath=../images/&outputPath=./assets/images/"
+                use: "file-loader?name=./assets/images/[name].[ext]"
+            },
+
+            /* js loader */
+            {
+                test: /\.js$/,
+                exclude: ["node_modules"],
+                use: ['imports-loader']
+            },
+
+            /* jqeuery loader */
+            {
+                test: require.resolve('jquery'),
+                use: [{
+                    loader: 'expose-loader',
+                    options: 'jQuery'
+                },{
+                    loader: 'expose-loader',
+                    options: '$'
+                }]
             }
+
 
         ]
     },
 
     plugins: [
 
-        new webpack.optimize.UglifyJsPlugin(),
+        //new webpack.optimize.UglifyJsPlugin(),
 
         new webpack.ProvidePlugin({
             $: 'jquery',
@@ -140,8 +160,10 @@ const config = {
             'window.jQuery': 'jquery'
         }),
 
+        // PUG TEMPLATES
+
         new HtmlWebpackPlugin({
-            title: 'Webpack Test E25',
+            title: 'HOME PAGE',
             chunks: ['vendor', 'app'],
             template: './src/index.pug'
         }),
@@ -156,9 +178,8 @@ const config = {
             host: 'localhost',
             port: 3000,
             proxy: 'http://localhost:8080/'
-        }, { reload: false }),
+        }, { reload: false })
 
-        new BitBarWebpackProgressPlugin()
     ]
 };
 
